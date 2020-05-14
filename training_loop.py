@@ -1,29 +1,16 @@
-
-import torch
-import matplotlib.pyplot as plt
-import copy
-
-def training_loop(n_epochs, optim, model, loss_fn, dl_train, dl_val, 
-                  hist=None, 
-                  lr_scheduler=None,
-                  device=torch.device('cpu'),
-                  return_best_model=True):
-    best_acc = 0
-
-    best_model_wts = copy.deepcopy(model.state_dict()) if return_best_model else None
-    
+def training_loop(n_epochs, optim, model, loss_fn, dl_train, dl_val, hist=None, lr_scheduler=None):
     if hist is not None:
-        best_acc = max(hist['vacc'])
+        pass
     else:
         hist = {'tloss': [], 'tacc': [], 'vloss': [], 'vacc': []}
     #
     if lr_scheduler is not None:
-        lr = [] # records lr after each epoch
-
+        lr = []
+        
+    best_acc = 0
     for epoch in range(1, n_epochs+1):
         tr_loss, tr_acc = 0., 0.
         n_data = 0
-        model.train() # in train mode
         for im_batch, label_batch in dl_train: # minibatch
             im_batch, label_batch = im_batch.to(device), label_batch.to(device)
             ypred = model(im_batch)
@@ -43,24 +30,22 @@ def training_loop(n_epochs, optim, model, loss_fn, dl_train, dl_val,
         tr_loss /= n_data
         tr_acc  /= n_data
         #
-        val_loss, val_acc = performance(model, loss_fn, dl_val, device)
+        val_loss, val_acc = performance(model, loss_fn, dl_val)
         
-        if epoch <= 5 or epoch % 10 == 0 or epoch == n_epochs:
-             print(f'Epoch {epoch}, tloss {tr_loss:.4f} t_acc: {tr_acc:.4f}  vloss {val_loss:.4f}  v_acc: {val_acc:.4f}')
+        if epoch <= 5 or epoch % 1000 == 0 or epoch == n_epochs:
+             print(f'Epoch {epoch}, tloss {tr_loss:.2f} t_acc: {tr_acc:.2f}  vloss {val_loss:.2f}  v_acc: {val_acc:.2f}')
         
         # best accuracy
         if best_acc < val_acc:
             best_acc = val_acc
-            print(f' >> best val accuracy updated at epoch {epoch}: {best_acc}.        ', end='\r')
-            
-            if return_best_model:
-                best_model_wts = copy.deepcopy(model.state_dict())
+            print(f' >> best val accuracy updated: {best_acc} at epoch {epoch}.')
         #
-        
         # record for history return
         if hist is not None:
-            hist['tloss'].append(tr_loss); hist['vloss'].append(val_loss) 
-            hist['tacc'].append(tr_acc);   hist['vacc'].append(val_acc)
+            hist['tloss'].append(tr_loss)
+            hist['vloss'].append(val_loss) 
+            hist['tacc'].append(tr_acc)
+            hist['vacc'].append(val_acc)
             
         if lr_scheduler is not None:
             lr.append(lr_scheduler.get_lr()) # the lr used in optim.
@@ -70,15 +55,11 @@ def training_loop(n_epochs, optim, model, loss_fn, dl_train, dl_val,
     if lr_scheduler is not None:
         hist['lr'] = lr
         
-    # load best model weights
-    if return_best_model:
-        model.load_state_dict(best_model_wts)
-        print('best model is loaded. ', end="")
-    print ('finished training_loop(). ')
+    print ('finished training_loop().')
     return hist
 #
 
-def performance(model, loss_fn, dataloader, device=torch.device('cpu')):
+def performance(model, loss_fn, dataloader):
     model.eval()
     with torch.no_grad():
         loss, acc, n = 0., 0., 0.
@@ -92,6 +73,7 @@ def performance(model, loss_fn, dataloader, device=torch.device('cpu')):
         #
     loss /= n
     acc /= n
+    model.train()
     return loss, acc
 #
 def plot_history(history):
@@ -103,8 +85,4 @@ def plot_history(history):
     axes[1].set_title(f'Acc. vbest: {max_vacc:.2f}')
     axes[1].plot(history['tacc'], label='train'); axes[1].plot(history['vacc'], label='val')
     axes[1].legend()
-#
-
-def count_params(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 #
