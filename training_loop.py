@@ -45,8 +45,8 @@ def training_loop(n_epochs, optim, model, loss_fn, dl_train, dl_val,
         #
         val_loss, val_acc = performance(model, loss_fn, dl_val, device)
         
-        if epoch <= 5 or epoch % 1000 == 0 or epoch == n_epochs:
-             print(f'Epoch {epoch}, tloss {tr_loss:.2f} t_acc: {tr_acc:.2f}  vloss {val_loss:.2f}  v_acc: {val_acc:.2f}')
+        if epoch <= 5 or epoch % 10 == 0 or epoch == n_epochs:
+             print(f'Epoch {epoch}, tloss {tr_loss:.4f} t_acc: {tr_acc:.4f}  vloss {val_loss:.4f}  v_acc: {val_acc:.4f}')
         
         # best accuracy
         if best_acc < val_acc:
